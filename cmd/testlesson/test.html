@@ -1,0 +1,144 @@
+const SubjectSearchView={
+    template:`
+    <div class="container mattblock">
+
+      <div><h1>Поиск субъекта (ID / ИИН / БИН)</h1></div>
+
+      <div class="filter-panel">
+          <label>Поиск:</label>
+          <input 
+            type="text" 
+            v-model="filters.search" 
+            placeholder="Введите ID, ИИН или БИН"
+          />
+      </div>
+
+       <div style="margin-top: 20px;">
+          <button class="btn" @click="showReport = true; fetchSubjects()">Найти</button>
+          <button class="btn" @click="refreshSubject()":disabled="!selectedId">Обновить</button>
+       </div>
+       <div v-if="showReport" class="container-content1" style="margin-top: 20px;"></div>  
+       <template v-if ="isLoading">
+        <div>Загрузка...</div>
+       </template> 
+       <template v-else>
+              <template v-if="subjects.length > 0">
+                  <table class="tbl w100 zebra">
+                      <thead>
+                          <tr>
+                              <th>ID</th>
+                              <th>ИИН / БИН</th>
+                              <th>ФИО / Название</th>
+                              <th>Категории</th>
+                              <th>Создан</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          <tr v-for="s in subjects" :key="s.id">
+                              <td>{{ s.id }}</td>
+                              <td>{{ s.identification_number || '-' }}</td>
+                              <td>{{ s.full_name || s.name || '-' }}</td>
+                              <td><s.categories>{{c}}</td>
+                              <td>{{ formatDate(s.created_date) }}</td>
+                          </tr>
+                      </tbody>
+                  </table>
+              </template>
+
+              <template v-else>
+                  <p>Ничего не найдено</p>
+              </template>
+          </template>
+
+      </div>
+  </div>
+    `,
+      data() {
+    return {
+      filters: { search: "" },
+      subjects: [],
+      selectedId:null,
+      isLoading: false,
+      showReport: false
+    };
+  },
+  methods: {
+    // Твоя логика поиска
+    async fetchSubjects() {
+      if (!this.filters.search) {
+        alert("Введите ID или ИИН/БИН");
+        return;
+      }
+
+      this.isLoading = true;
+      this.subjects = [];
+      this.selectedId=null;
+      try {
+        const params = new URLSearchParams({ search: this.filters.search });
+        const response = await axios.get(`/subjects?${params.toString()}`);
+
+        this.subjects = response.data || [];
+
+      } catch (error) {
+        console.error("Ошибка поиска:", error);
+        alert("Ошибка запроса");
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    selectRow(id){
+        this.selectedId=id;
+    },async refreshSubject() {
+      const idFromSelected = this.selectedId;
+      const idFromInput = (this.filters.search || "").trim();
+      const id = idFromSelected || idFromInput;
+
+      if (!id) {
+        alert("Нет ID для обновления — выберите строку или введите ID в поле поиска");
+        return;
+      }
+
+      this.isLoading = true;
+
+      try {
+        const response = await axios.get(`/incidents/RefreshSubject?id=${encodeURIComponent(id)}`);
+
+        // предполагаем, что сервер вернёт один объект
+        const updated = response.data;
+        if (!updated) {
+          alert("Сервер вернул пустой ответ");
+          return;
+        }
+
+        // Обновляем таблицу: если в текущих subjects есть элемент с таким id — заменяем его,
+        // иначе показываем только полученный объект (как раньше).
+        const idx = this.subjects.findIndex(s => s.id === updated.id || s.id === id);
+        if (idx !== -1) {
+          // заменяем существующую запись
+          this.$set(this.subjects, idx, updated);
+        } else {
+          // показываем только обновлённый объект
+          this.subjects = [updated];
+        }
+
+        // если обновлённый объект имеет id — делаем его выбранным
+        this.selectedId = updated.id || id;
+
+        // небольшое уведомление (можешь убрать)
+        // alert("Субъект обновлён");
+
+      } catch (err) {
+        console.error("Ошибка обновления:", err);
+        alert("Ошибка при обновлении субъекта");
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+
+     formatDate(date) {
+      if (!date) return "-";
+      return new Date(date).toLocaleDateString("ru-RU");
+    }
+  }
+}

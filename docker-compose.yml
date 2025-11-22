@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16.3
+    container_name: postgres-db
+    environment:
+      POSTGRES_DB: social
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpassword
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  migrate:
+    image: migrate/migrate
+    container_name: migrate-runner
+    depends_on:
+      - db
+    volumes:
+      - ./cmd/migrate/migrations:/migrations
+    command: [
+      "-path", "/migrations",
+      "-database", "postgres://admin:adminpassword@db:5432/social?sslmode=disable",
+      "up"
+    ]
+
+  api:
+    build: .
+    container_name: erbol-api
+    depends_on:
+      - db
+      - migrate
+    environment:
+      ADDR: ":8080"
+      DB_ADDR: "postgres://admin:adminpassword@db:5432/social?sslmode=disable"
+      DB_MAX_OPEN_CONNS: 30
+      DB_MAX_IDLE_CONNS: 30
+      DB_MAX_IDLE_TIME: "15m"
+    ports:
+      - "8080:8080"
+    restart: on-failure
+
+volumes:
+   db-data:

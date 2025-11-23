@@ -19,7 +19,7 @@ migrate-down:
 
 .PHONY: seed 
 seed: 
-	@go run cmd/migrate/seed/main.go || echo Seed failed
+	@go run cmd/migrate/seed/main.go 
 # Эта строка нужна для обработки аргументов командной строки
 %:
 	@

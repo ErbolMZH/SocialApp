@@ -34,6 +34,7 @@ func (p *password) Set(text string) error {
 	}
 	p.text = &text
 	p.hash = hash
+	return nil
 }
 
 type UsersStore struct {
@@ -50,7 +51,7 @@ func (s *UsersStore) Create(ctx context.Context, tx *sql.Tx, user *User) error {
 		ctx,
 		query,
 		user.Username,
-		user.Password,
+		user.Password.hash,
 		user.Email,
 	).Scan(
 		&user.ID,
